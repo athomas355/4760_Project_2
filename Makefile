@@ -4,8 +4,9 @@
 CFLAGS="-g"
 
 
-bin_addr:%.c %h
-	$(CC) -c $(CFLAGS) -o bin_addr $^
+master: %.cpp %h
+	#We gotta figure out how to do rules to name the cpp files in the line below
+	$(CC) -c $(CFLAGS) -o master master.cpp bin_addr.cpp 
 
 clean:
-	rm main bin_addr
+	rm master
