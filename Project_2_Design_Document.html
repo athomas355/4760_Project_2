@@ -23,31 +23,97 @@ h1{font-size:138.5%;}h2{font-size:123.1%;}h3{font-size:108%;}h1,h2,h3{margin:1em
   <body>
     <div id="doc3" class="yui-t1">
       <div id="hd">
-        <h1>Project 2 Design Documentation</h1>
-        <h2>1. Get a Makefile that compiles the two source files&nbsp;</h2>
-        <h2>2. Have your main executable read in the command line arguments and
-          output the values to your screen (and ensure -h displays useful
-          results). Make sure that the parameters have correct values</h2>
-        <h2>3. Have master allocate shared memory, use it, then deallocate it.
-          Make sure to check all possible error returns. Read the data into
-          shared memory. </h2>
-        <h2>4. Get master to fork and exec one child and have that child attach
-          to shared memory and read data from shared memory. Have the child
-          output any information it was passed from master and then the values
-          it read from shared memory. master should wait for it to terminate
-          before terminating itself.</h2>
-        <h2>5. Put in the signal handling to terminate after specified number of
-          seconds. A good idea to test this is to simply\par have the child go
-          into an infinite loop so master will not ever terminate normally. Once
-          this is working have it catch Ctrl-c and free up the shared memory,
-          send a kill signal to the child and then terminate itself.</h2>
-        <h2>6. Set up the code to fork multiple child processes until the
-          specific limits. You'll end up doing this in a nested loop. The outer
-          loop will handle levels in the tree while the inner loop will take
-          care of the pairs at the level. </h2>
-        <h2>7. Make each child process perform its share of the task and update
-          the log file.</h2>
-        <h2>8. Ensure that the critical section problem is solved.</h2>
+        <h1><a id="mozTocId169656" class="mozTocH1"></a>Project 2 Design
+          Documentation</h1>
+        <h2><a id="mozTocId345419" class="mozTocH2"></a>Requirements</h2>
+        <h3><span style="text-decoration: line-through;">Get a Makefile that
+            compiles the two source files</span> </h3>
+        <p>&nbsp;&nbsp;&nbsp; -I have the Makefile.</p>
+        <h3><a id="mozTocId647817" class="mozTocH3"></a>Have your main
+          executable read in the command line arguments and output the values to
+          your screen (and ensure -h displays useful results). Make sure that
+          the parameters have correct values</h3>
+        <h3><a id="mozTocId685452" class="mozTocH3"></a>Have master allocate
+          shared memory, use it, then deallocate it. Make sure to check all
+          possible error returns. Read the data into shared memory. </h3>
+        <h3><a id="mozTocId717730" class="mozTocH3"></a>Get master to fork and
+          exec one child and have that child attach to shared memory and read
+          data from shared memory. Have the child output any information it was
+          passed from master and then the values it read from shared memory.
+          master should wait for it to terminate before terminating itself.</h3>
+        <h3><a id="mozTocId647938" class="mozTocH3"></a>Put in the signal
+          handling to terminate after specified number of seconds. A good idea
+          to test this is to simply\par have the child go into an infinite loop
+          so master will not ever terminate normally. Once this is working have
+          it catch Ctrl-c and free up the shared memory, send a kill signal to
+          the child and then terminate itself.</h3>
+        <h3><a id="mozTocId667700" class="mozTocH3"></a>Set up the code to fork
+          multiple child processes until the specific limits. You'll end up
+          doing this in a nested loop. The outer loop will handle levels in the
+          tree while the inner loop will take care of the pairs at the level. </h3>
+        <h3><a id="mozTocId792737" class="mozTocH3"></a>Make each child process
+          perform its share of the task and update the log file.</h3>
+        <h3><a id="mozTocId417809" class="mozTocH3"></a>Ensure that the critical
+          section problem is solved.</h3>
+        <h2><a id="mozTocId873279" class="mozTocH2"></a>Design</h2>
+        <p><br>
+        </p>
+        <h2><a id="mozTocId436327" class="mozTocH2"></a>Test Plan</h2>
+        <p><br>
+        </p>
+        <h2>References</h2>
+        <p><a href="https://www.gnu.org/software/make/manual/html_node/Pattern-Rules.html">How
+            to make a Makefile</a>&nbsp;
+        </p>
+        <p><br>
+        </p>
+        <p><br>
+        </p>
+        <hr style="width: 100%; color: white;">
+        <ol id="mozToc">
+          <!--mozToc h1 1 h2 2 h3 3 h4 4 h5 5 h6 6-->
+          <li><a href="#mozTocId169656">Project 2 Design Documentation</a>
+            <ol>
+              <li><a href="#mozTocId345419">Requirements</a>
+                <ol>
+                  <li><a href="#mozTocId449849">Get a Makefile that compiles the
+                      two source files</a></li>
+                  <li><a href="#mozTocId647817">Have your main executable read
+                      in the command line arguments and output the values to
+                      your screen (and ensure -h displays useful results). Make
+                      sure that the parameters have correct values</a></li>
+                  <li><a href="#mozTocId685452">Have master allocate shared
+                      memory, use it, then deallocate it. Make sure to check all
+                      possible error returns. Read the data into shared memory.</a></li>
+                  <li><a href="#mozTocId717730">Get master to fork and exec one
+                      child and have that child attach to shared memory and read
+                      data from shared memory. Have the child output any
+                      information it was passed from master and then the values
+                      it read from shared memory. master should wait for it to
+                      terminate before terminating itself.</a></li>
+                  <li><a href="#mozTocId647938">Put in the signal handling to
+                      terminate after specified number of seconds. A good idea
+                      to test this is to simply\par have the child go into an
+                      infinite loop so master will not ever terminate normally.
+                      Once this is working have it catch Ctrl-c and free up the
+                      shared memory, send a kill signal to the child and then
+                      terminate itself.</a></li>
+                  <li><a href="#mozTocId667700">Set up the code to fork multiple
+                      child processes until the specific limits. You'll end up
+                      doing this in a nested loop. The outer loop will handle
+                      levels in the tree while the inner loop will take care of
+                      the pairs at the level.</a></li>
+                  <li><a href="#mozTocId792737">Make each child process perform
+                      its share of the task and update the log file.</a></li>
+                  <li><a href="#mozTocId417809">Ensure that the critical section
+                      problem is solved.</a></li>
+                </ol>
+              </li>
+              <li><a href="#mozTocId873279">Design</a></li>
+              <li><a href="#mozTocId436327">Test Plan</a></li>
+            </ol>
+          </li>
+        </ol>
       </div>
       <div id="bd">
         <div id="yui-main">
