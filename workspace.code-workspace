@@ -29,6 +29,18 @@
 		},
 		{
 			"path": "..\\.."
+		},
+		{
+			"path": "..\\..\\..\\testGetopt"
+		},
+		{
+			"path": "..\\..\\..\\XGetopt_demo"
+		},
+		{
+			"path": "..\\..\\..\\DelimiterStack"
+		},
+		{
+			"path": "..\\..\\..\\DStack"
 		}
 	],
 	"settings": {
