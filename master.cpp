@@ -10,11 +10,12 @@
 #include <limits.h>
 #include <assert.h>
 #include <time.h>
+#include <sys/time.h>
 #include <iostream>
 
 #define DEBUG 1
 #define SHM_KEY 0x1234
-#define ARR_SIZE 1024
+#define ARR_SIZE 8192
 using namespace std;
 
 //command argument struct
@@ -55,6 +56,12 @@ int main(int argc, char* argv[]) {
     int max_active = 3;
     int number_active = 0;
     bool done = false;
+    timeval start_time;
+    timeval current_time;
+    time_t starting_time_secs;
+    time_t current_time_secs;
+    gettimeofday(&start_time, NULL);
+    starting_time_secs = start_time.tv_sec;
 
     //struct timespec {time_t tv_sec = 0; long tv_nsec = 100000000;} waittime;    //waiting for 1/10 of a second which is a hundred million nanosecs
     struct timespec waittime;
@@ -97,6 +104,13 @@ int main(int argc, char* argv[]) {
         for(int stage = 1; stage <= actualSizeLog2; stage++) { //for loop for looping through each stage of processes calculation
             int offset = ipow(2, (stage - 1));
             for(int memoryIndex = 0; memoryIndex < actualSize; memoryIndex += 2 * offset) {             //for loop for iterating through the shared memory
+                gettimeofday(&current_time, NULL);
+                current_time_secs = current_time.tv_sec;
+                if(current_time_secs - starting_time_secs > args.time) {
+                    printf("The Execution time: %d seconds has exceeded %d\n", (int)(current_time_secs - starting_time_secs), args.time);
+                    while (wait(NULL) > 0);
+                    exit(-2);
+                }
                 if(shmPtr->processCounter <= max_active) {   
                     shmPtr->processCounter++;
                     printf("process counter = %d\n", shmPtr->processCounter);
