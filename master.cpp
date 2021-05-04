@@ -9,6 +9,7 @@
 #include <cmath>
 #include <limits.h>
 #include <assert.h>
+#include <time.h>
 #include <iostream>
 
 #define DEBUG 1
@@ -28,6 +29,7 @@ struct cli_struct{
 struct shmSegment {
     int intArr[ARR_SIZE];
     int stage;
+    int processCounter;
     int memoryIndex;    //holds index of shared memory; based on what stage we are in it get incremented differently; stage x = incremented 2^stage x
     //if actualSize = 8, then memoryIndex = 0, 2, 4, 6; if actualSize = even number, then memoryIndex = every even number until 1  even number below the actualSize (comment: I don't know if this is right)
 };
@@ -48,26 +50,32 @@ int main(int argc, char* argv[]) {
     int actualSize = ARR_SIZE;
     int sum;
     int pidCounter = 0;
+    //int processCounter = 0;
     int pidArr[1024];
+    int max_active = 3;
+    int number_active = 0;
+    bool done = false;
 
+    //struct timespec {time_t tv_sec = 0; long tv_nsec = 100000000;} waittime;    //waiting for 1/10 of a second which is a hundred million nanosecs
+    struct timespec waittime;
+    waittime.tv_sec = 0;
+    waittime.tv_nsec = 100000000;
     //allocate shared memory shmget()
-    int shmID = shmget(SHM_KEY, sizeof(struct shmSegment), 0644|IPC_CREAT);
-    if (shmID == -1) {  //error check to see if shared memeory was allocated correctly
-      perror("Shared memory\n");
+    int shmID = shmget(IPC_PRIVATE, sizeof(struct shmSegment), 0644|IPC_CREAT);
+    if (shmID == -1) {  //error check to see if shared memory was allocated correctly
+      perror("shmget failed\n");
       exit(-1);
     }
 
     //use shared memory; put inputs from datafile into shared memory shmat()
     shmPtr = (struct shmSegment *)shmat(shmID, NULL, 0);            //if the second argument of shmat() is NULL, then the system picks the address; third argument is shmflg
     if (shmPtr == (void *) -1) {
-      perror("Shared memory attach\n");
+      perror("shmat failed\n");
       exit(-1);
     }
 
     readDatafile(shmPtr->intArr, &actualSize, args.datafile);
     if(actualSize > 0) {    //readDatafile worked properly
-        printf("readDatafile worked!\n");
-        printf("actualSize = %d\n", actualSize);
 
         //prints the shared memory array
         for(int i = 0; i < actualSize; i++) {
@@ -80,45 +88,63 @@ int main(int argc, char* argv[]) {
         exit(-1);
     }
     
-    int actualSizeLog2 = mylog2(actualSize);
+    int actualSizeLog2 = mylog2(actualSize); //how many stages to finish calculation 
+    shmPtr->processCounter = 0;
     
 
     //offset = stage 1 = 1, stage 2 = 2, stage 3 = 4, offset = 2 ^ (stage - 1)
-    for(int stage = 1; stage <= actualSizeLog2; stage++) { //for loop for looping through each stage of processes calculation
-        int offset = ipow(2, (stage - 1));
-        for(int memoryIndex = 0; memoryIndex < actualSize; memoryIndex += 2 * offset) {             //for loop for iterating through the shared memory
-            pid_t pid = fork();
-            if(pid == -1) {
-                printf("Fork call failed\n");
-                exit(-1);
+    //for(; !done; number_active++) {
+        for(int stage = 1; stage <= actualSizeLog2; stage++) { //for loop for looping through each stage of processes calculation
+            int offset = ipow(2, (stage - 1));
+            for(int memoryIndex = 0; memoryIndex < actualSize; memoryIndex += 2 * offset) {             //for loop for iterating through the shared memory
+                if(shmPtr->processCounter <= max_active) {   
+                    shmPtr->processCounter++;
+                    printf("process counter = %d\n", shmPtr->processCounter);
+                    pid_t pid = fork();
+                
+                    
+                    if(pid == -1) {     //fork fails
+                        printf("Fork call failed\n");
+                        exit(-1);
+                    }
+                    else if(pid == 0) {     //child process
+                        //("This process is the child %d\n", childAction());        
+                        //offset will be 1 when stage is 1, and 2 when stage = 2, and 4 when stage = 3
+                        sum = shmPtr->intArr[memoryIndex] + shmPtr->intArr[memoryIndex + offset];
+                        shmPtr->intArr[memoryIndex] = sum;
+                        shmPtr->intArr[memoryIndex + offset] = '\0';
+
+                        //prints the shared memory array
+                        for(int i = 0; i < actualSize; i++) {
+                            printf("  %d  ", shmPtr->intArr[i]);
+                        }
+                        printf("\n");
+
+                        //exits out of child process
+                        shmPtr->processCounter--;
+                        printf("Child process pid = %d is about to die, and process counter = %d\n", getpid(), shmPtr->processCounter);
+                        exit(0);
+                    }
+                    else {  //parent process
+                        printf("This is the parent process and the child process is %d\n", pid);
+                        pidArr[pidCounter++] = pid;
+                        printf("process counter = %d\n", shmPtr->processCounter);
+                        
+
+                    }//did the C Beautifier do a good job of beautifying this
+                }
+                else {  //the process counter is > 3
+                    while(shmPtr->processCounter > max_active) {
+                        printf("Entered spin loop, process counter = %d\n", shmPtr->processCounter);
+                        nanosleep(&waittime, NULL);     //shmPtr->processCounter is gonna be changed by a child process
+                    }
+                }
             }
-            else if(pid == 0) {
-                //("This process is the child %d\n", childAction());        
-                //offset will be 1 when stage is 1, and 2 when stage = 2, and 4 when stage = 3
-                //assert(stage != 3 && offset != 4);
-                sum = shmPtr->intArr[memoryIndex] + shmPtr->intArr[memoryIndex + offset];
-                shmPtr->intArr[memoryIndex] = sum;
-                shmPtr->intArr[memoryIndex + offset] = '\0';
-
-                printf("stage = %d, memory index = %d, offset = %d\n", stage, memoryIndex, offset);
-
-                // //prints the shared memory array
-                // for(int i = 0; i < actualSize; i++) {
-                //     printf("  %d  ", shmPtr->intArr[i]);
-                // }
-                // printf("\n");
-
-                //printf("Exiting from child\n");
-                exit(0);
-            }
-            else {
-                printf("This is the parent process and the child process is %d\n", pid);
-                pidArr[pidCounter++] = pid;
-            }//did the C Beautifier do a good job of beautifying this
         }
-    }
+    //}
 
     //https://stackoverflow.com/questions/19461744/how-to-make-parent-wait-for-all-child-processes-to-finish
+    //parent waits for all child prcoesses to finish
     while (wait(NULL) > 0);
 
     //prints the shared memory array
@@ -141,7 +167,7 @@ int main(int argc, char* argv[]) {
     
 */
     //deallocate shared memory shmdt()
-    int shmdt(shmID);
+    shmdt((void*)shmPtr);
 
     return 0;
 }
@@ -250,13 +276,13 @@ int readDatafile(int *arr, int *size, char* filename) {
 
     //counts how many lines are in the file; it puts the number of lines *size
     int counter = 0;
+    int iCounter = 0;
 
     while (getline(myfile, line)) {
         counter++;
     }
 
     //rewinds the file
-    //rewind();take out later
     myfile.clear();
     myfile.seekg(0);
 
@@ -264,8 +290,18 @@ int readDatafile(int *arr, int *size, char* filename) {
     for (int i = 0; i < counter; i++) {
         getline(myfile, line);
         arr[i] = stoi(line);
+        iCounter++;
     }
 
+    //adding 0's if #ofIntegers = 2^x
+    //(n & (n - 1)) == 0 shows that the # is a power of 2
+    //https://stackoverflow.com/questions/108318/whats-the-simplest-way-to-test-whether-a-number-is-a-power-of-2-in-c
+    while(!((counter & (counter - 1)) == 0)) {
+        arr[iCounter] == 0;
+        iCounter++;
+        counter++;
+    }   //this can be simplified revisit later
+    
     *size = counter;
 
     //closes the file
@@ -298,10 +334,10 @@ static unsigned int ipow(unsigned int val, unsigned int exp) {
 }
 
 /* Test Cases:
-    -datafile has 2^x positive integers
+    *-datafile has 2^x positive integers
     -datafile has a different number other than 2^x positive integers
-    -datafile has some negative integers
-    -datafile not found or readable
+    *-datafile has some negative integers
+    *-datafile not found or readable
     -what happens if the fork call fails
     -all command line parse errors
     -when there are more than 20 children
