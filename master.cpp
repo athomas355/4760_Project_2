@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
     int pidCounter = 0;
     //int processCounter = 0;
     int pidArr[1024];
-    int max_active = 3;
+    int max_active = 20;
     int number_active = 0;
     bool done = false;
     timeval start_time;
@@ -62,6 +62,8 @@ int main(int argc, char* argv[]) {
     time_t current_time_secs;
     gettimeofday(&start_time, NULL);
     starting_time_secs = start_time.tv_sec;
+    pid_t stage_before_fork;
+    printf("stage_before_fork_PARENT; pid = %d\n", getpid());
 
     //struct timespec {time_t tv_sec = 0; long tv_nsec = 100000000;} waittime;    //waiting for 1/10 of a second which is a hundred million nanosecs
     struct timespec waittime;
@@ -84,11 +86,11 @@ int main(int argc, char* argv[]) {
     readDatafile(shmPtr->intArr, &actualSize, args.datafile);
     if(actualSize > 0) {    //readDatafile worked properly
 
-        //prints the shared memory array
-        for(int i = 0; i < actualSize; i++) {
-            printf("  %d  ", shmPtr->intArr[i]);
-        }
-        printf("\n");
+        // //prints the shared memory array
+        // for(int i = 0; i < actualSize; i++) {
+        //     printf("  %d  ", shmPtr->intArr[i]);
+        // }
+        // printf("\n");
     }
     else {  //readDatafile failed
         printf("readDatafile didn't work!\n");
@@ -102,6 +104,7 @@ int main(int argc, char* argv[]) {
     //offset = stage 1 = 1, stage 2 = 2, stage 3 = 4, offset = 2 ^ (stage - 1)
     //for(; !done; number_active++) {
         for(int stage = 1; stage <= actualSizeLog2; stage++) { //for loop for looping through each stage of processes calculation
+            int stage_before_fork = stage;  //stage_before_fork should never change except here
             int offset = ipow(2, (stage - 1));
             for(int memoryIndex = 0; memoryIndex < actualSize; memoryIndex += 2 * offset) {             //for loop for iterating through the shared memory
                 gettimeofday(&current_time, NULL);
@@ -114,7 +117,10 @@ int main(int argc, char* argv[]) {
                 if(shmPtr->processCounter <= max_active) {   
                     shmPtr->processCounter++;
                     printf("process counter = %d\n", shmPtr->processCounter);
+                    printf("stage_before_fork = %d, pid = %d\n", stage_before_fork, getpid());
                     pid_t pid = fork();
+
+
                 
                     
                     if(pid == -1) {     //fork fails
@@ -122,37 +128,52 @@ int main(int argc, char* argv[]) {
                         exit(-1);
                     }
                     else if(pid == 0) {     //child process
+                        //WE TESTED WITH getpid AND FORK IS WORKING PROPERLY
+                        if(stage != stage_before_fork) {
+                            printf("We are in the CHILD; stage_before_fork = %d, stage = %d\n", stage_before_fork, stage);
+                        }
                         //("This process is the child %d\n", childAction());        
                         //offset will be 1 when stage is 1, and 2 when stage = 2, and 4 when stage = 3
                         sum = shmPtr->intArr[memoryIndex] + shmPtr->intArr[memoryIndex + offset];
                         shmPtr->intArr[memoryIndex] = sum;
                         shmPtr->intArr[memoryIndex + offset] = '\0';
 
-                        //prints the shared memory array
-                        for(int i = 0; i < actualSize; i++) {
-                            printf("  %d  ", shmPtr->intArr[i]);
-                        }
-                        printf("\n");
+                        // //prints the shared memory array
+                        // for(int i = 0; i < actualSize; i++) {
+                        //     printf("  %d  ", shmPtr->intArr[i]);
+                        // }
+                        // printf("\n");
 
                         //exits out of child process
-                        shmPtr->processCounter--;
-                        printf("Child process pid = %d is about to die, and process counter = %d\n", getpid(), shmPtr->processCounter);
-                        exit(0);
+                        if(shmPtr->processCounter >= max_active) {
+                            shmPtr->processCounter--;
+                            printf("Child process pid = %d is about to die, and process counter = %d\n", getpid(), shmPtr->processCounter);
+                            exit(0);
+                            printf("This child refused to die!!!\n");
+                        }
                     }
                     else {  //parent process
+
+                        //WE TESTED getpid and fork is wokring properly
+                        if(stage != stage_before_fork) {
+                            printf("We are in the PARENT; stage_before_fork = %d, stage = %d\n", stage_before_fork, stage);
+                        }
                         printf("This is the parent process and the child process is %d\n", pid);
                         pidArr[pidCounter++] = pid;
                         printf("process counter = %d\n", shmPtr->processCounter);
                         
 
-                    }//did the C Beautifier do a good job of beautifying this
-                }
-                else {  //the process counter is > 3
-                    while(shmPtr->processCounter > max_active) {
-                        printf("Entered spin loop, process counter = %d\n", shmPtr->processCounter);
-                        nanosleep(&waittime, NULL);     //shmPtr->processCounter is gonna be changed by a child process
                     }
                 }
+                else {  //the process counter is > 20
+                    int spin_counter = 1;
+                    while(shmPtr->processCounter > max_active) {
+                        printf("Entered spin loop, process counter = %d, spin counter = %d\n", shmPtr->processCounter, spin_counter);
+                        nanosleep(&waittime, NULL);     //shmPtr->processCounter is gonna be changed by a child process
+                        spin_counter++;
+                    }
+                }
+                printf("offset = %d\n", offset);
             }
         }
     //}
@@ -363,5 +384,7 @@ static unsigned int ipow(unsigned int val, unsigned int exp) {
     *Ash comment in shared memory struct have to find out if it is correct
     *Ash Find out how to store the pids of the children processes so the parent process know when to wait 
     *Jeff how to abort the program if it takes too long
+    *We should use the signal call and the alarm call to terminate the child process
+
 
 */
