@@ -46,6 +46,7 @@ static unsigned int ipow(unsigned int val, unsigned int exp);
 //main function
 int main(int argc, char* argv[]) {
     
+    printf("stage_before_fork pid = %d\n", getpid());
     cli_struct args = parse_args(argc, argv);   //catching the parsed args
     struct shmSegment *shmPtr;
     int actualSize = ARR_SIZE;
@@ -121,8 +122,6 @@ int main(int argc, char* argv[]) {
                     pid_t pid = fork();
 
 
-                
-                    
                     if(pid == -1) {     //fork fails
                         printf("Fork call failed\n");
                         exit(-1);
@@ -158,11 +157,11 @@ int main(int argc, char* argv[]) {
                         if(stage != stage_before_fork) {
                             printf("We are in the PARENT; stage_before_fork = %d, stage = %d\n", stage_before_fork, stage);
                         }
-                        printf("This is the parent process and the child process is %d\n", pid);
+                        printf("This is the parent process and the child process is %d; offset = %d; stage = %d\n", pid, offset, stage);
                         pidArr[pidCounter++] = pid;
                         printf("process counter = %d\n", shmPtr->processCounter);
-                        
-
+                        printf("This PARENT process is going to die.\n");
+                        exit(0);
                     }
                 }
                 else {  //the process counter is > 20
