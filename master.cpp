@@ -18,12 +18,14 @@
 #define ARR_SIZE 8192
 using namespace std;
 
+int *children;
+
 //command argument struct
 struct cli_struct{
     bool s, t;
     int x, time;
     char* datafile;
-};
+} args;
 
 //https://www.tutorialspoint.com/inter_process_communication/inter_process_communication_shared_memory.htm 
 //shared memory struct
@@ -42,12 +44,13 @@ int childAction();
 int readDatafile(int *arr, int *size, char* filename);
 static unsigned int mylog2 (unsigned int val);
 static unsigned int ipow(unsigned int val, unsigned int exp);
+void sigquitHandler(int signal_number);
 
 //main function
 int main(int argc, char* argv[]) {
     
     printf("stage_before_fork pid = %d\n", getpid());
-    cli_struct args = parse_args(argc, argv);   //catching the parsed args
+    args = parse_args(argc, argv);   //catching the parsed args
     struct shmSegment *shmPtr;
     int actualSize = ARR_SIZE;
     int sum;
@@ -64,6 +67,8 @@ int main(int argc, char* argv[]) {
     gettimeofday(&start_time, NULL);
     starting_time_secs = start_time.tv_sec;
     pid_t stage_before_fork;
+    pid_t child_pid;
+
     printf("stage_before_fork_PARENT; pid = %d\n", getpid());
 
     //struct timespec {time_t tv_sec = 0; long tv_nsec = 100000000;} waittime;    //waiting for 1/10 of a second which is a hundred million nanosecs
@@ -100,11 +105,15 @@ int main(int argc, char* argv[]) {
     
     int actualSizeLog2 = mylog2(actualSize); //how many stages to finish calculation 
     shmPtr->processCounter = 0;
+    int stage = -1; //doing this so we know we haven't given stage a value
+
     
 
     //offset = stage 1 = 1, stage 2 = 2, stage 3 = 4, offset = 2 ^ (stage - 1)
     //for(; !done; number_active++) {
-        for(int stage = 1; stage <= actualSizeLog2; stage++) { //for loop for looping through each stage of processes calculation
+        //for(int stage = 1; stage <= actualSizeLog2; stage++) { //for loop for looping through each stage of processes calculation
+        //comment out 
+        if(false) {
             int stage_before_fork = stage;  //stage_before_fork should never change except here
             int offset = ipow(2, (stage - 1));
             for(int memoryIndex = 0; memoryIndex < actualSize; memoryIndex += 2 * offset) {             //for loop for iterating through the shared memory
@@ -147,6 +156,7 @@ int main(int argc, char* argv[]) {
                         if(shmPtr->processCounter >= max_active) {
                             shmPtr->processCounter--;
                             printf("Child process pid = %d is about to die, and process counter = %d\n", getpid(), shmPtr->processCounter);
+                            fflush(stdout);
                             exit(0);
                             printf("This child refused to die!!!\n");
                         }
@@ -160,7 +170,9 @@ int main(int argc, char* argv[]) {
                         printf("This is the parent process and the child process is %d; offset = %d; stage = %d\n", pid, offset, stage);
                         pidArr[pidCounter++] = pid;
                         printf("process counter = %d\n", shmPtr->processCounter);
-                        printf("This PARENT process is going to die.\n");
+                        //system("ps -jH -u athomas355 -w --forest");
+                        printf("This PARENT process %d is going to die.\n", getpid());
+                        fflush(stdout);
                         exit(0);
                     }
                 }
@@ -179,13 +191,22 @@ int main(int argc, char* argv[]) {
 
     //https://stackoverflow.com/questions/19461744/how-to-make-parent-wait-for-all-child-processes-to-finish
     //parent waits for all child prcoesses to finish
-    while (wait(NULL) > 0);
+    while ((child_pid = wait(nullptr)) > 0) {
+        cout << "child " << child_pid << " terminated" << endl;
+    }
 
     //prints the shared memory array
+    int count = 0;
     for(int i = 0; i < actualSize; i++) {
         printf("  %d  ", shmPtr->intArr[i]);
+        if(shmPtr->intArr[i] > 0) {
+            count++;
+        }
     }
-    printf("\n");
+    if(count == 1) {
+        done = true;
+    }
+    printf("\tprinted shared memory array\n");
 
 /*pseduocode:
     #ofProcesses = actualSize/2
@@ -203,6 +224,9 @@ int main(int argc, char* argv[]) {
     //deallocate shared memory shmdt()
     shmdt((void*)shmPtr);
 
+    //kill all the children
+
+
     return 0;
 }
 
@@ -219,6 +243,7 @@ cli_struct parse_args(int argc,char* argv[]) {
         switch(option) {
             case 'h':   //help message
                 printf("master [-h] [-s x] [-t time] datafile\n\t-s: maximum number of child processes\n\t-t: maximum allowed second before process terminates");
+                fflush(stdout);
                 exit(0);
 
             case 's':   //maximum number of child processes 
@@ -366,6 +391,18 @@ static unsigned int ipow(unsigned int val, unsigned int exp) {
 
     return total;
 }
+
+//https://www.delftstack.com/howto/cpp/cpp-fork/
+// void sigquitHandler(int signal_number)
+// {
+//     for (int i = 0; i < args.x; ++i) {
+//         kill(children[i], SIGTERM);
+//     }
+//     printf("I'm in the sigquit handler and waiting for  any child processes to die")
+//     while ((child_pid = wait(nullptr)) > 0);
+//     printf("child_pid %d just died\n", child_pid);
+//     _exit(103);
+// }
 
 /* Test Cases:
     *-datafile has 2^x positive integers
